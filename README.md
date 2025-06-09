@@ -1,11 +1,9 @@
-Voici une analyse claire en français du code :
-
-1. **Structure générale** :
+# Structure générale 
 - C'est une application web qui permet d'extraire des données d'un fichier Excel et de les convertir en format JSON
 - L'interface utilise un design moderne avec des champs de saisie et des boutons
 - Les couleurs et le style sont définis avec des variables CSS pour une cohérence visuelle
 
-2. **Fonctionnalités principales** :
+1. **Fonctionnalités principales** :
 - Upload d'un fichier Excel (.xlsx ou .xls)
 - Configuration des paramètres de lecture :
   - Nom de la feuille Excel
@@ -15,7 +13,7 @@ Voici une analyse claire en français du code :
 - Conversion des données en JSON
 - Téléchargement du résultat en fichier JSON
 
-3. **Traitement des données** :
+2. **Traitement des données** :
 - Le script lit le fichier Excel de manière asynchrone
 - Il extrait les informations selon les paramètres spécifiés
 - Il ignore certaines colonnes selon les mots-clés définis
@@ -26,13 +24,13 @@ Voici une analyse claire en français du code :
   - Les crédits
   - La décision
 
-4. **Points d'attention** :
+3. **Points d'attention** :
 - La bibliothèque XLSX doit être chargée (via js.js)
 - Le script inclut des logs de débogage dans la console
 - Les valeurs vides sont converties en null
 - Le format de sortie est structuré et indenté
 
-5. **Sécurité et validation** :
+4. **Sécurité et validation** :
 - Vérification de la présence du fichier
 - Validation de l'existence de la feuille Excel
 - Gestion des erreurs basique avec des alertes
