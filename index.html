@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Extracteur JSON – Étudiants Excel</title>
+    <script src="js.js"></script>
+    <style>
+      :root {
+        --bg: #f5f8fa;
+        --card: #ffffff;
+        --text: #222;
+        --accent: #007bff;
+        --border: #ddd;
+        --radius: 12px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 2rem;
+        background: var(--bg);
+        font-family: "Segoe UI", sans-serif;
+        color: var(--text);
+      }
+      h1 {
+        text-align: center;
+        color: var(--accent);
+        margin-bottom: 2rem;
+      }
+      .container {
+        max-width: 900px;
+        margin: auto;
+        background: var(--card);
+        border-radius: var(--radius);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        padding: 2rem;
+      }
+      label {
+        display: block;
+        margin-top: 1rem;
+        font-weight: bold;
+      }
+      input[type="text"],
+      input[type="number"],
+      input[type="file"] {
+        width: 100%;
+        padding: 0.6rem;
+        margin-top: 0.3rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        transition: border-color 0.3s;
+      }
+      input:focus {
+        border-color: var(--accent);
+        outline: none;
+      }
+      button {
+        margin-top: 1.5rem;
+        padding: 0.8rem 1.4rem;
+        border: none;
+        border-radius: var(--radius);
+        background: var(--accent);
+        color: white;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+      button:hover {
+        background: #005ec2;
+      }
+      pre {
+        background: #f0f0f0;
+        padding: 1rem;
+        margin-top: 2rem;
+        border-radius: var(--radius);
+        max-height: 400px;
+        overflow: auto;
+      }
+      .button-group {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>📄 Extracteur JSON depuis un fichier Excel</h1>
+    <div class="container">
+      <label
+        >Fichier Excel :
+        <input type="file" id="excelFile" accept=".xlsx,.xls" />
+      </label>
+
+      <label
+        >Auditoire :
+        <input type="text" id="auditoire" value="3ème Licence Pharmacie" />
+      </label>
+
+      <label
+        >Section :
+        <input type="text" id="section" value="Pharmacie" />
+      </label>
+
+      <label
+        >Nom de la feuille :
+        <input type="text" id="sheetName" value="L3_PHARMA_2024-2025_S5" />
+      </label>
+
+      <label
+        >Ligne des titres de cours :
+        <input type="number" id="headerRow" value="11" />
+      </label>
+
+      <label
+        >Ligne de début des étudiants :
+        <input type="number" id="startRow" value="15" />
+      </label>
+
+      <label
+        >Colonne du 1er cours (ex. E) :
+        <input type="text" id="startCol" value="E" />
+      </label>
+
+      <label
+        >Colonne du numéro étudiant :
+        <input type="text" id="colNumero" value="C" />
+      </label>
+
+      <label
+        >Colonne du nom :
+        <input type="text" id="colNom" value="D" />
+      </label>
+
+      <label
+        >Colonne de la moyenne générale :
+        <input type="text" id="colMoyenne" value="AQ" />
+      </label>
+
+      <label
+        >Colonne des crédits :
+        <input type="text" id="colCredits" value="AR" />
+      </label>
+
+      <label
+        >Colonne de la décision :
+        <input type="text" id="colDecision" value="AS" />
+      </label>
+
+      <label
+        >Mots-clés à ignorer dans les cours (ex. "total,moyenne,crédit") :
+        <input type="text" id="ignoreKeywords" value="total,moyenne,crédit" />
+      </label>
+
+      <div class="button-group">
+        <button onclick="traiterExcel()">📥 Lire le fichier</button>
+        <button onclick="downloadJSON()" id="downloadBtn" style="display: none">
+          💾 Télécharger JSON
+        </button>
+      </div>
+
+      <pre id="output">Le JSON apparaîtra ici après lecture du fichier...</pre>
+    </div>
+
+    <script>
+      if (typeof XLSX === "undefined") {
+        alert("La bibliothèque XLSX n'est pas chargée !");
+      }
+      let jsonData = [];
+
+      function colToIndex(col) {
+        let idx = 0;
+        for (let i = 0; i < col.length; i++) {
+          idx = idx * 26 + (col.charCodeAt(i) - 64);
+        }
+        return idx - 1;
+      }
+
+      function emptyToNull(val) {
+        return val === undefined || val === "" ? null : val;
+      }
+
+      function traiterExcel() {
+        const file = document.getElementById("excelFile").files[0];
+        if (!file) return alert("Veuillez sélectionner un fichier.");
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const wb = XLSX.read(e.target.result, { type: "binary" });
+          const sheetName = document.getElementById("sheetName").value;
+          const ws = wb.Sheets[sheetName];
+          if (!ws) return alert("Feuille introuvable : " + sheetName);
+
+          // Ajout des logs de débogage
+          console.log("Feuille trouvée:", sheetName);
+          console.log("Structure de la feuille:", ws);
+          console.log("Plage de cellules:", ws["!ref"]);
+
+          const headerRow = +document.getElementById("headerRow").value;
+          const startRow = +document.getElementById("startRow").value;
+          const startColIdx = colToIndex(
+            document.getElementById("startCol").value.toUpperCase()
+          );
+          const colNumero = document
+            .getElementById("colNumero")
+            .value.toUpperCase();
+          const colNom = document.getElementById("colNom").value.toUpperCase();
+          const colMoyenne = document
+            .getElementById("colMoyenne")
+            .value.toUpperCase();
+          const colCredits = document
+            .getElementById("colCredits")
+            .value.toUpperCase();
+          const colDecision = document
+            .getElementById("colDecision")
+            .value.toUpperCase();
+
+          const ignoreWords = document
+            .getElementById("ignoreKeywords")
+            .value.toLowerCase()
+            .split(",")
+            .map((w) => w.trim());
+
+          const range = XLSX.utils.decode_range(ws["!ref"]);
+          console.log("Plage décodée:", range);
+          const courses = {};
+
+          // Log des paramètres
+          console.log("Ligne des titres:", headerRow);
+          console.log("Colonne de début:", startColIdx);
+          console.log("Plage de cellules:", range);
+
+          for (let c = startColIdx; c <= range.e.c; c++) {
+            const addr = XLSX.utils.encode_cell({ c, r: headerRow - 1 });
+            const title = ws[addr]?.v;
+            if (!title) continue;
+
+            const lower = title.toString().toLowerCase();
+            const shouldIgnore = ignoreWords.some((word) =>
+              lower.includes(word)
+            );
+            if (shouldIgnore) continue;
+
+            courses[c] = title;
+          }
+
+          // Log des cours trouvés
+          console.log("Cours détectés:", courses);
+
+          const data = [];
+          const auditoire = document.getElementById("auditoire").value;
+          const section = document.getElementById("section").value;
+
+          for (let r = startRow - 1; r <= range.e.r; r++) {
+            const num = emptyToNull(ws[colNumero + (r + 1)]?.v);
+            const nom = emptyToNull(ws[colNom + (r + 1)]?.v);
+
+            // Log pour chaque étudiant
+            console.log(`Ligne ${r + 1}:`, { num, nom });
+
+            if (num === null || nom === null) continue;
+
+            const moyenne = emptyToNull(ws[colMoyenne + (r + 1)]?.v);
+            const credits = emptyToNull(ws[colCredits + (r + 1)]?.v);
+            const decision = emptyToNull(ws[colDecision + (r + 1)]?.v);
+
+            const notes = {};
+            for (let c in courses) {
+              const addr = XLSX.utils.encode_cell({ c: +c, r });
+              const val = ws[addr]?.v;
+              notes[courses[c]] = emptyToNull(val);
+            }
+
+            data.push({
+              auditoire: auditoire,
+              section: section,
+              numero: num,
+              nom: nom,
+              moyenne_generale: moyenne,
+              total_credits: credits,
+              decision: decision,
+              notes: notes,
+            });
+          }
+
+          console.log("Données finales:", data);
+          jsonData = data;
+          document.getElementById("output").textContent = JSON.stringify(
+            jsonData,
+            null,
+            2
+          );
+          document.getElementById("downloadBtn").style.display = "inline-block";
+        };
+
+        reader.readAsBinaryString(file);
+      }
+
+      function downloadJSON() {
+        const blob = new Blob([JSON.stringify(jsonData, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "etudiants.json";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    </script>
+  </body>
+</html>
